@@ -66,6 +66,7 @@ npm i express
 npm i axios
 ```
 **3. Start each service**
+
 Run each service in separate terminal windows:
 * **Customer Service**
   ```
