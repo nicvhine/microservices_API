@@ -62,8 +62,7 @@ git clone https://github.com/nicvhine/microservices_API.git
 ```
 **2. Install dependencies:**
 ```
-npm i express
-npm i axios
+npm install
 ```
 **3. Start each service**
 
