@@ -55,7 +55,7 @@ The project consists of three independent microservices
   * **PUT /orders/:id:** Update an order.
   * **DELETE /orders/:id:** Delete an order.
     
-### Setup and Installation
+## **Setup and Installation**
 **1. Clone the repository:**
 ```
 git clone https://github.com/nicvhine/microservices_API.git
