@@ -41,7 +41,7 @@ The project consists of three independent microservices
   * **PUT /customers/:id:** Update customer information.
   * **DELETE /customers/:id:** Delete a customer.
 
-### Order Servicce - Port: 3003
+### Order Service - Port: 3003
   * **POST /orders:** Create a new order. Validates customer and product data by communicating with the Customer and Product Services.
     ```json
     {
@@ -54,5 +54,31 @@ The project consists of three independent microservices
   * **GET /orders/:id:** Get order details by ID.
   * **PUT /orders/:id:** Update an order.
   * **DELETE /orders/:id:** Delete an order.
+    
+### Setup and Installation
+**1. Clone the repository:**
+```
+git clone https://github.com/nicvhine/microservices_API.git
+```
+**2. Install dependencies:**
+```
+npm i express
+npm i axios
+```
+**3. Start each service**
+Run each service in separate terminal windows:
+* **Customer Service**
+  ```
+  node CustomerService.js
+  ```
+* **Product Service**
+  ```
+  node ProductService.js
+  ```
+* **Order Service**
+  ```
+  node OrderService.js
+  ```
+
 
 
