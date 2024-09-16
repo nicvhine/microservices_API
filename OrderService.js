@@ -58,6 +58,14 @@ app.post('/orders', async (req, res) => {
     }
 });
 
+app.get('/orders', (req, res) => {
+    try{
+        res.send(orders);
+    } catch (error){
+        res.status(500).json({message: error.message});
+    }
+});
+
 app.get('/orders/:orderId', (req, res) => {
     try {
         const orderId = parseInt(req.params.orderId);
@@ -124,5 +132,5 @@ app.delete('/orders/:orderId', (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`Order Service is running on port ${PORT}`);
+    console.log(`Service is running on port ${PORT}`);
 });
