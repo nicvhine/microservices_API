@@ -2,11 +2,16 @@ const express = require('express');
 
 const app = express();
 const PORT = 3002;
+const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
 
 app.use(express.json());
 
+function validateEmail(email){
+    return emailRegex.test(email);
+}
+
 const customers = [
-    {id: 1, name: "John", age: 22}, 
+    {id: 1, name: "John", age: 22, email: "john@gmail.com"}, 
     {id: 2, name: "Brian", age: 31} 
 ];
 
@@ -15,20 +20,32 @@ app.get('/', (req, res) => {
 });
 
 app.post('/customers', (req, res) => {
-    try{
+    try {
         const { name, email, age } = req.body;
+        
+        if (!name || typeof name !== 'string' || !name.trim()) {
+            return res.status(400).json({ message: "Invalid name" });
+        }
+
+        if (!email || !validateEmail(email)) {
+            return res.status(400).json({ message: "Invalid email" });
+        }
+
+        if (age !== undefined && (!Number.isInteger(age) || age <= 0)) {
+            return res.status(400).json({ message: "Invalid age" });
+        }
 
         const newCustomer = {
             id: customers.length + 1, 
-            name: name,
+            name: name.trim(),
             email: email,
             age: age || null 
         };
 
         customers.push(newCustomer);
 
-        res.status(200).json(newCustomer);
-    } catch (error){
+        res.status(201).json(newCustomer);
+    } catch (error) {
         res.status(500).json({message: error.message});
     }
 });
@@ -57,28 +74,44 @@ app.get('/customers/:id', (req, res) => {
 
 
 app.put('/customers/:id', (req, res) => {
-    try{
-      const id = parseInt(req.params.id);
-      const customerIndex = customers.findIndex(c => c.id === id);
-      if (!customerIndex) {
-        return res.status(404).json({message: "Customer not found"});
-      }
+    try {
+        const id = parseInt(req.params.id);
+        const customerIndex = customers.findIndex(c => c.id === id);
 
-      const customer = customers[customerIndex];
-        if (req.body.name) {
-            customer.name = req.body.name;
+        if (customerIndex === -1) {
+            return res.status(404).json({message: "Customer not found"});
         }
-        if (req.body.age) {
-            customer.age = req.body.age;
+
+        const customer = customers[customerIndex];
+
+        if (req.body.name !== undefined) {
+            if (typeof req.body.name === 'string' && req.body.name.trim()) {
+                customer.name = req.body.name.trim();
+            } else {
+                return res.status(400).json({ message: 'Invalid name' });
+            }
         }
-        if (req.body.email) {
-            customer.email = req.body.email;
+
+        if (req.body.age !== undefined) {
+            if (Number.isInteger(req.body.age) && req.body.age > 0) {
+                customer.age = req.body.age; 
+            } else {
+                return res.status(400).json({ message: 'Invalid age' });
+            }
+        }
+
+        if (req.body.email !== undefined) {
+            if (typeof req.body.email === 'string' && validateEmail(req.body.email)) {
+                customer.email = req.body.email;   
+            } else {
+                return res.status(400).json({ message: "Invalid email" });
+            }
         }
         
         customers[customerIndex] = customer;
         res.status(200).json(customer);
       
-    } catch (error){
+    } catch (error) {
         res.status(500).json({message: error.message});
     }
 });

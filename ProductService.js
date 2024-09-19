@@ -17,16 +17,34 @@ app.get('/', (req, res) => {
 app.post('/products', (req, res) => {
     try{
         const {name, quantity, price} = req.body;
+        if (typeof name !== 'string' || !name.trim()) {
+            return res.status(400).json({ message: 'Invalid name. Must be a non-empty string.' });
+        }
 
         const newProduct = {
-            id: products.length + 1, 
-            name: name,
-            quantity: Number(quantity),
-            price: Number(price)
+            id: products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1,
+            name: name.trim()
         };
 
+        // Optional quantity
+        if (quantity !== undefined) {
+            if (!Number.isInteger(Number(quantity)) || Number(quantity) < 0) {
+                return res.status(400).json({ message: 'Invalid quantity. Must be a non-negative integer.' });
+            }
+            newProduct.quantity = Number(quantity);
+        }
+
+        // Optional price
+        if (price !== undefined) {
+            if (isNaN(Number(price)) || Number(price) < 0) {
+                return res.status(400).json({ message: 'Invalid price. Must be a non-negative number.' });
+            }
+            newProduct.price = parseFloat(Number(price).toFixed(2));
+        }
+
+
         products.push(newProduct);
-        res.status(200).json(newProduct);
+        res.status(200).json({ message: 'Product created successfully', product: newProduct });
 
     } catch (error){
         res.status(500).json({message: error.message});
@@ -69,14 +87,24 @@ app.put('/products/:id', (req, res) => {
         
         const product = products[productIndex];
 
-        if (req.body.name) {
-            product.name = req.body.name;
+        if (typeof req.body.name === 'string' && req.body.name.trim()) {
+            product.name = req.body.name.trim();
         }
-        if (req.body.quantity) {
-            product.quantity = Number(req.body.quantity);
+
+        if (req.body.quantity !== undefined) {
+            if (Number.isInteger(req.body.quantity) && req.body.quantity >= 0) {
+                product.quantity = req.body.quantity;
+            } else {
+                return res.status(400).json({ message: 'Invalid quantity. Must be a non-negative integer.' });
+            }
         }
-        if (req.body.price) {
-            product.price = Number(req.body.price);
+
+        if (req.body.price !== undefined) {
+            if (typeof req.body.price === 'number' && req.body.price >= 0) {
+                product.price = parseFloat(req.body.price.toFixed(2));
+            } else {
+                return res.status(400).json({ message: 'Invalid price. Must be a non-negative number.' });
+            }
         }
 
         products[productIndex] = product;
