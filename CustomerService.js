@@ -10,7 +10,7 @@ function validateEmail(email){
     return emailRegex.test(email);
 }
 
-const customers = [
+let customers = [
     {id: 1, name: "John", age: 22, email: "john@gmail.com"}, 
     {id: 2, name: "Brian", age: 31} 
 ];

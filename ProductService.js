@@ -5,7 +5,7 @@ const PORT = 3001;
 app.use(express.json());
 
 
-const products = [
+let products = [
     {id: 1, name: "choco", quantity: 20, price: 100},
     {id: 2, name: "cheese", quantity: 30, price: 200}
 ]
