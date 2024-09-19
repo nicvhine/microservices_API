@@ -44,7 +44,7 @@ app.post('/customers', (req, res) => {
 
         customers.push(newCustomer);
 
-        res.status(201).json(newCustomer);
+        res.status(201).json({message: "Customer created successfully",newCustomer});
     } catch (error) {
         res.status(500).json({message: error.message});
     }
@@ -109,7 +109,7 @@ app.put('/customers/:id', (req, res) => {
         }
         
         customers[customerIndex] = customer;
-        res.status(200).json(customer);
+        res.status(200).json({message: "Customer details updated",customer});
       
     } catch (error) {
         res.status(500).json({message: error.message});
@@ -125,8 +125,8 @@ app.delete('/customers/:id', (req, res) => {
             return res.status(404).json({message: "Customer not found"});
         }
 
-            // customers.splice(customerIndex, 1);
-            customers.deleted = true;
+            customers.splice(customerIndex, 1);
+           // customers.deleted = true;
 
           res.status(200).json({ message: `Customer with id ${id} has been deleted` });
     } catch (error){

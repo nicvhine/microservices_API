@@ -108,7 +108,7 @@ app.put('/products/:id', (req, res) => {
         }
 
         products[productIndex] = product;
-        res.status(200).json(product);
+        res.status(200).json({message: "Product updated",product});
 
     } catch(error){
         res.status(500).json({message: error.message});
