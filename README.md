@@ -81,4 +81,9 @@ Run each service in separate terminal windows:
   ```
 
 
+## **Technologies Used**
+* Node.js
+* Express.js
+
+
 
