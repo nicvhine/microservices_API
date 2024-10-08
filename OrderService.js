@@ -1,136 +1,165 @@
 const express = require('express');
-const axios = require('axios');
+const jwt = require('jsonwebtoken');
 const app = express();
 const PORT = 3003;
 
 app.use(express.json());
 
+const SECRET_KEY = 'yourSecretKey'; 
 let orders = [];
+let products = [
+    { id: 1, name: 'Product A', price: 100, stock: 50 },
+    { id: 2, name: 'Product B', price: 200, stock: 30 },
+];
 
-app.post('/orders', async (req, res) => {
-    try {
-        const { customerId, productId, quantity } = req.body;
+const authenticateUser = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
 
-        let customer;
+    if (authHeader) {
+        const token = authHeader.split(' ')[1];
         try {
-            const customerResponse = await axios.get(`http://localhost:3002/customers/${customerId}`);
-            customer = customerResponse.data;
-        } catch (error) {
-            if (error.response && error.response.status === 404) {
-                return res.status(404).json({ message: "Customer not found" });
+            const decoded = jwt.verify(token, SECRET_KEY);
+            req.user = decoded; 
+            next(); 
+        } catch (err) {
+            res.status(403).send('Invalid token');
+        }
+    } else {
+        res.status(401).send('No token provided');
+    }
+};
+
+// Place order
+app.post('/orders', authenticateUser, (req, res) => {
+    const { productId, quantity } = req.body;
+    console.log(`Received order request: productId = ${productId}, quantity = ${quantity}`); 
+
+    const product = products.find(p => p.id === Number(productId)); 
+
+    if (!product) {
+        console.log(`Product not found: ${productId}`); 
+        return res.status(400).json({ message: 'Product not found' });
+    }
+
+    console.log(`Current stock for ${product.name}: ${product.stock}`);
+
+    if (product.stock < quantity) {
+        return res.status(400).json({ message: `Not enough stock for product: ${product.name}` });
+    }
+
+    const totalAmount = product.price * quantity;
+
+    const newOrder = {
+        id: orders.length + 1,
+        userId: req.user.id,
+        products: [{ id: product.id, name: product.name, quantity }],
+        totalAmount,
+        status: 'pending'
+    };
+
+    product.stock -= quantity; 
+    console.log(`Stock after placing order: ${product.stock}`); 
+
+    orders.push(newOrder);
+    res.status(201).json({ message: 'Order placed successfully', order: newOrder });
+});
+
+
+// Admin can fetch all orders; Customers can see their own orders
+app.get('/orders', authenticateUser, (req, res) => {
+    if (req.user.role === 'admin') {
+        res.json(orders);
+    } else {
+        const userOrders = orders.filter(order => order.userId === req.user.id);
+        res.json(userOrders);
+    }
+});
+
+// Admin can edit any order; Customers can edit their own orders only if status is pending
+app.put('/orders/:id', authenticateUser, (req, res) => {
+    const { id } = req.params;
+    const order = orders.find(o => o.id == id);
+
+    if (order) {
+        if (req.user.role === 'admin') {
+            const { status } = req.body;
+            if (status && (status === 'pending' || status === 'completed')) {
+                order.status = status;
+
+                if (status === 'completed') {
+                    order.products.forEach(prod => {
+                        const product = products.find(p => p.id === prod.id); 
+                        if (product) {
+                            product.stock -= prod.quantity; 
+                            console.log(`Stock updated for ${product.name}: ${product.stock}`); 
+                        }
+                    });
+                }
+                
+                res.json({ message: 'Order status updated', order });
+            } else {
+                return res.status(400).send('Invalid status: Must be "pending" or "completed"');
             }
-            return res.status(500).json({ message: "Error contacting Customer Service" });
-        }
-
-        let product;
-        try {
-            const productResponse = await axios.get(`http://localhost:3001/products/${productId}`);
-            product = productResponse.data;
-        } catch (error) {
-            if (error.response && error.response.status === 404) {
-                return res.status(404).json({ message: "Product not found" });
+        } else if (order.userId == req.user.id) {
+            if (order.status !== 'pending') {
+                return res.status(403).send('Access denied: You can only edit orders with pending status');
             }
-            return res.status(500).json({ message: "Error contacting Product Service" });
+
+            const { productId, quantity } = req.body;
+
+            if (productId) {
+                const product = products.find(p => p.id === productId); 
+                if (!product) {
+                    return res.status(400).json({ message: 'Product not found' });
+                }
+                if (product.stock < quantity) {
+                    return res.status(400).json({ message: `Not enough stock for product: ${product.name}` });
+                }
+                order.products[0].id = product.id;
+                order.products[0].name = product.name; 
+            }
+
+            if (quantity) {
+                const oldQuantity = order.products[0].quantity;
+                order.products[0].quantity = quantity; 
+
+                const product = products.find(p => p.id === order.products[0].id); 
+                if (product) {
+                    product.stock += oldQuantity; 
+                    product.stock -= quantity; 
+                    console.log(`Stock after updating quantity for ${product.name}: ${product.stock}`); 
+                }
+            }
+
+            order.totalAmount = products.find(p => p.id === order.products[0].id).price * quantity; 
+            res.json({ message: 'Order updated successfully', order });
+        } else {
+            res.status(403).send('Access denied: You can only edit your own orders');
         }
-
-        if (product.quantity < quantity) {
-            return res.status(400).json({ message: "Insufficient product quantity" });
-        }
-
-        const newOrder = {
-            id: orders.length + 1,
-            customerId,
-            productId,
-            quantity,
-            totalPrice: product.price * quantity
-        };
-
-        await axios.put(`http://localhost:3001/products/${productId}`, { quantity: product.quantity - quantity });
-
-        orders.push(newOrder);
-
-        res.status(201).json({
-            message: "Order placed successfully!",
-            order: newOrder
-        });
-    } catch (error) {
-        res.status(500).json({ message: error.message });
+    } else {
+        res.status(404).json({ message: 'Order not found' });
     }
 });
 
-app.get('/orders', (req, res) => {
-    try{
-        res.send(orders);
-    } catch (error){
-        res.status(500).json({message: error.message});
-    }
-});
 
-app.get('/orders/:orderId', (req, res) => {
-    try {
-        const orderId = parseInt(req.params.orderId);
-        const order = orders.find(o => o.id === orderId);
+// Admin can delete any orders; Customers can delete their own orders if status is pending
+app.delete('/orders/:id', authenticateUser, (req, res) => {
+    const { id } = req.params;
+    const orderIndex = orders.findIndex(o => o.id == id);
 
-        if (!order) {
-            return res.status(404).json({ message: "Order not found" });
-        }
-
-        res.status(200).json(order);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-});
-
-app.put('/orders/:orderId', (req, res) => {
-    try {
-        const orderId = parseInt(req.params.orderId);
-        const orderIndex = orders.findIndex(o => o.id === orderId);
-
-        if (orderIndex === -1) {
-            return res.status(404).json({ message: "Order not found" });
-        }
-
+    if (orderIndex !== -1) {
         const order = orders[orderIndex];
-
-        if (req.body.customerId) {
-            order.customerId = req.body.customerId;
+        if (req.user.role === 'admin' || (order.userId === req.user.id && order.status === 'pending')) {
+            orders.splice(orderIndex, 1);
+            res.json({ message: 'Order deleted successfully' });
+        } else {
+            res.status(403).send('Access denied: You can only delete your own pending orders');
         }
-        if (req.body.productId) {
-            order.productId = req.body.productId;
-        }
-        if (req.body.quantity) {
-            order.quantity = req.body.quantity;
-            order.totalPrice = req.body.quantity * order.totalPrice / order.quantity; 
-        }
-
-        orders[orderIndex] = order;
-
-        res.status(200).json({
-            message: "Order updated successfully",
-            order: order
-        });
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-});
-
-app.delete('/orders/:orderId', (req, res) => {
-    try {
-        const orderId = parseInt(req.params.orderId);
-        const orderIndex = orders.findIndex(o => o.id === orderId);
-
-        if (orderIndex === -1) {
-            return res.status(404).json({ message: "Order not found" });
-        }
-
-        orders.splice(orderIndex, 1); 
-
-        res.status(200).json({ message: `Order with id ${orderId} has been deleted` });
-    } catch (error) {
-        res.status(500).json({ message: error.message });
+    } else {
+        res.status(404).json({ message: 'Order not found' });
     }
 });
 
 app.listen(PORT, () => {
-    console.log(`Service is running on port ${PORT}`);
+    console.log(`Order Service running on port ${PORT}`);
 });
