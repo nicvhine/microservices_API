@@ -1,0 +1,43 @@
+http:
+  port: 8080
+
+apiEndpoints:
+  customer:
+    host: localhost
+    paths: /customers/*
+  product:
+    host: localhost
+    paths: /products/*
+  order:
+    host: localhost
+    paths: /orders/*
+
+serviceEndpoints:
+  customerService:
+    url: 'http://localhost:3002'
+  productService:
+    url: 'http://localhost:3001'
+  orderService:
+    url: 'http://localhost:3003'
+
+policies:
+  - basic-auth
+  - cors
+  - log
+  - proxy
+
+pipelines:
+  default:
+    policies:
+      - proxy:
+          - action:
+              serviceEndpoint: customerService
+              changeOrigin: true
+      - proxy:
+          - action:
+              serviceEndpoint: productService
+              changeOrigin: true
+      - proxy:
+          - action:
+              serviceEndpoint: orderService
+              changeOrigin: true
