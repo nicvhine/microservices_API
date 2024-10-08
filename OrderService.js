@@ -1,5 +1,7 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
+// const {body, validationResult} = require('express-validator');
+const rateLimit = require('express-rate-limit');
 const app = express();
 const PORT = 3003;
 
@@ -11,6 +13,30 @@ let products = [
     { id: 1, name: 'Product A', price: 100, stock: 50 },
     { id: 2, name: 'Product B', price: 200, stock: 30 },
 ];
+
+const orderLimiter = rateLimit({
+    windowMs: 10 * 60 * 1000,
+    max: 5, 
+    message:'Too many orders placed, please try again later.'
+});
+
+const fetchOrdersLimiter = rateLimit({
+    windowMs: 1 * 60 * 1000,
+    max: 10,
+    message: 'Too many requests, please wait before fetching orders again.'
+});
+
+const editOrderLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, 
+    max: 5,
+    message: 'Too many edit requests, please try again later.'
+});
+
+const deleteOrderLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, 
+    max: 5, 
+    message: 'Too many delete requests, please try again later.'
+});
 
 const authenticateUser = (req, res, next) => {
     const authHeader = req.headers['authorization'];
@@ -30,7 +56,12 @@ const authenticateUser = (req, res, next) => {
 };
 
 // Place order
-app.post('/orders', authenticateUser, (req, res) => {
+app.post('/orders', orderLimiter, authenticateUser, (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+
     const { productId, quantity } = req.body;
     console.log(`Received order request: productId = ${productId}, quantity = ${quantity}`); 
 
@@ -66,7 +97,7 @@ app.post('/orders', authenticateUser, (req, res) => {
 
 
 // Admin can fetch all orders; Customers can see their own orders
-app.get('/orders', authenticateUser, (req, res) => {
+app.get('/orders', fetchOrdersLimiter, authenticateUser, (req, res) => {
     if (req.user.role === 'admin') {
         res.json(orders);
     } else {
@@ -76,7 +107,7 @@ app.get('/orders', authenticateUser, (req, res) => {
 });
 
 // Admin can edit any order; Customers can edit their own orders only if status is pending
-app.put('/orders/:id', authenticateUser, (req, res) => {
+app.put('/orders/:id', editOrderLimiter, authenticateUser, (req, res) => {
     const { id } = req.params;
     const order = orders.find(o => o.id == id);
 
@@ -143,7 +174,7 @@ app.put('/orders/:id', authenticateUser, (req, res) => {
 
 
 // Admin can delete any orders; Customers can delete their own orders if status is pending
-app.delete('/orders/:id', authenticateUser, (req, res) => {
+app.delete('/orders/:id', deleteOrderLimiter, authenticateUser, (req, res) => {
     const { id } = req.params;
     const orderIndex = orders.findIndex(o => o.id == id);
 

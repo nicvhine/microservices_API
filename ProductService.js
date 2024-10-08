@@ -1,5 +1,7 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const {body, validationResult} = require('express-validator');
+const rateLimit = require('express-rate-limit');
 const app = express();
 const PORT = 3001;
 
@@ -10,6 +12,30 @@ let products = [
     { id: 1, name: 'Product A', price: 100, stock: 50 },
     { id: 2, name: 'Product B', price: 200, stock: 30 },
 ];
+
+const getLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    message: 'Too many get requests, please try again later'
+});
+
+const createLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 5,
+    message: 'Too many post requests, please try again later'
+});
+
+const editLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, 
+    max: 5,
+    message: 'Too many edit requests, please try again later.'
+});
+
+const deleteLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, 
+    max: 5, 
+    message: 'Too many delete requests, please try again later.'
+});
 
 const authenticateAdmin = (req, res, next) => {
     const authHeader = req.headers['authorization'];
@@ -32,12 +58,12 @@ const authenticateAdmin = (req, res, next) => {
 };
 
 // Get all products (Public access)
-app.get('/products', (req, res) => {
+app.get('/products', getLimiter, (req, res) => {
     res.json(products);
 });
 
 // Get product by ID 
-app.get('/products/:id', (req, res) => {
+app.get('/products/:id', getLimiter, (req, res) => {
     const { id } = req.params;
     const product = products.find(p => p.id == id);
 
@@ -49,7 +75,19 @@ app.get('/products/:id', (req, res) => {
 });
 
 // Add a new product (Admin only)
-app.post('/products', authenticateAdmin, (req, res) => {
+app.post('/products', createLimiter, authenticateAdmin, [
+    body('name')
+        .isString()
+        .notEmpty().withMessage('Product name is required'),
+    body('price')
+        .isFloat({ gte: 0 }).withMessage('Price must be not be a negative number'),
+    body('stock')
+        .isInt({ gte: 0 }).withMessage('Stock must not be a negative number'),
+], (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
     const { name, price, stock } = req.body;
     const newProduct = {
         id: products.length + 1,
@@ -62,7 +100,19 @@ app.post('/products', authenticateAdmin, (req, res) => {
 });
 
 // Update product (Admin only)
-app.put('/products/:id', authenticateAdmin, (req, res) => {
+app.put('/products/:id', editLimiter, authenticateAdmin, [
+    body('name')
+        .optional()
+        .isString()
+        .notEmpty().withMessage('Product name is required'),
+    body('price')
+        .optional()
+        .isFloat({ gte: 0 }).withMessage('Price must be not be a negative number'),
+    body('stock')
+        .optional()
+        .isInt({ gte: 0 }).withMessage('Stock must not be a negative number'),
+
+], (req, res) => {
     const { id } = req.params;
     const { name, price, stock } = req.body;
     const product = products.find(p => p.id == id);
@@ -79,7 +129,7 @@ app.put('/products/:id', authenticateAdmin, (req, res) => {
 });
 
 // Delete product (Admin only)
-app.delete('/products/:id', authenticateAdmin, (req, res) => {
+app.delete('/products/:id', deleteLimiter, authenticateAdmin, (req, res) => {
     const { id } = req.params;
     const productIndex = products.findIndex(p => p.id == id);
 
