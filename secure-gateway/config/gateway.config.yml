@@ -68,4 +68,4 @@ pipelines:
               changeOrigin: true
               condition:
                 name: 'path'
-                match: '/orders/*'
+                match: '/orders/*' 
