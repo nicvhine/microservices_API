@@ -1,8 +1,10 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
-const https = require('https');
 const {body, validationResult} = require('express-validator');
 const rateLimit = require('express-rate-limit');
+const https = require('https');
+const path = require('path');
+const fs = require('fs');
 const app = express();
 const PORT = 3002;
 
@@ -38,6 +40,10 @@ const deleteUserLimiter = rateLimit({
     max: 10, 
     message: 'Too many update requests, please try again later.'
   });
+
+app.use('/', (req, res) => {
+    res.send('Customer Service');
+})
 
 // Register user
 app.post('/register', limiter, [
@@ -224,6 +230,17 @@ app.put('/user/:id',updateUserLimiter, [
     }
 });
 
-app.listen(PORT, () => {
-    console.log(`User Service running on port ${PORT}`);
+const sslServer = https.createServer({
+        key: fs.readFileSync(path.join(__dirname, 'cert', 'key.pem')),
+        cert: fs.readFileSync(path.join(__dirname, 'cert', 'cert.pem'))
+    }, 
+    app
+)
+
+sslServer.listen(PORT, ()=> {
+    console.log(`User Service on Secure Server running on port ${PORT}`);
 });
+
+// app.listen(PORT, () => {
+//     console.log(`User Service running on port ${PORT}`);
+// });

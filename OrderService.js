@@ -191,6 +191,18 @@ app.delete('/orders/:id', deleteOrderLimiter, authenticateUser, (req, res) => {
     }
 });
 
-app.listen(PORT, () => {
-    console.log(`Order Service running on port ${PORT}`);
+const sslServer = https.createServer({
+    key: fs.readFileSync(path.join(__dirname, 'cert', 'key.pem')),
+    cert: fs.readFileSync(path.join(__dirname, 'cert', 'cert.pem'))
+}, 
+app
+)
+
+sslServer.listen(PORT, ()=> {
+console.log(`Order Service on Secure Server running on port ${PORT}`);
 });
+
+
+// app.listen(PORT, () => {
+//     console.log(`Order Service running on port ${PORT}`);
+// });
