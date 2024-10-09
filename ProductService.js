@@ -50,7 +50,11 @@ const authenticateAdmin = (req, res, next) => {
                 res.status(403).send('Access denied: Admins only');
             }
         } catch (err) {
-            res.status(403).send('Invalid token');
+            if (err.name === 'TokenExpiredError') {
+                res.status(401).send('Token has expired');
+            } else {
+                res.status(403).send('Invalid token');
+            }
         }
     } else {
         res.status(401).send('No token provided');
