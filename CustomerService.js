@@ -12,8 +12,8 @@ app.use(express.json());
 
 const SECRET_KEY = 'yourSecretKey';
 let users = [
-    { id: 1, username: 'John', password: 'john', role: 'customer', email: 'john@gmail.com' },
-    { id: 2, username: 'Brian', password: 'brian', role: 'admin', email: 'brian@gmail.com' }
+    { id: 1, username: 'John', password: 'John123*', role: 'customer', email: 'john@gmail.com' },
+    { id: 2, username: 'Brian', password: 'Brian123*', role: 'admin', email: 'brian@gmail.com' }
 ];
 
 // rate limiters
@@ -41,9 +41,9 @@ const deleteUserLimiter = rateLimit({
     message: 'Too many update requests, please try again later.'
   });
 
-app.use('/', (req, res) => {
-    res.send('Customer Service');
-})
+// app.use('/', (req, res) => {
+//     res.send('Customer Service');
+// })
 
 // Register user
 app.post('/register', limiter, [
@@ -122,13 +122,18 @@ app.get('/profile', profileLimiter, (req, res) => {
             }
         } catch (err) {
             if (err.name === 'TokenExpiredError') {
-            res.status(401).send('Token Expired');
+                res.status(401).send('Token expired');
+            } else if (err.name === 'JsonWebTokenError') {
+                res.status(403).send('Invalid token');
+            } else {
+                res.status(500).send('Server error');
+            }
         }
-            res.status(403).send('Invalid token');
     } else {
         res.status(401).send('No token provided');
     }
 });
+
 
 // Admin can delete any users; Customers can delete own profile
 app.delete('/user/:id',deleteUserLimiter, (req, res) => {
