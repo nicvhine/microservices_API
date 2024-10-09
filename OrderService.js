@@ -48,6 +48,9 @@ const authenticateUser = (req, res, next) => {
             req.user = decoded; 
             next(); 
         } catch (err) {
+            if (err.name === 'TokenExpiredError') {
+                return res.status(401).send('Token expired');
+            }
             res.status(403).send('Invalid token');
         }
     } else {
