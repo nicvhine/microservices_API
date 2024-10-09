@@ -92,7 +92,7 @@ app.post('/login', limiter, [
     const user = users.find(u => u.username === username && u.password === password);
 
     if (user) {
-        const token = jwt.sign({ id: user.id, role: user.role }, SECRET_KEY);
+        const token = jwt.sign({ id: user.id, role: user.role }, SECRET_KEY, { expiresIn: '1hr' });
         res.json({ token });
     } else {
         res.status(401).send('Invalid credentials');
@@ -121,8 +121,10 @@ app.get('/profile', profileLimiter, (req, res) => {
                 res.status(404).send('User not found');
             }
         } catch (err) {
-            res.status(403).send('Invalid token');
+            if (err.name === 'TokenExpiredError') {
+            res.status(401).send('Token Expired');
         }
+            res.status(403).send('Invalid token');
     } else {
         res.status(401).send('No token provided');
     }
@@ -154,6 +156,9 @@ app.delete('/user/:id',deleteUserLimiter, (req, res) => {
                 res.status(404).send('User not found');
             }
         } catch (err) {
+            if (err.name === 'TokenExpiredError') {
+                return res.status(401).send('Token expired');
+            }
             res.status(403).send('Invalid token');
         }
     } else {
@@ -223,6 +228,9 @@ app.put('/user/:id',updateUserLimiter, [
                 res.status(404).send('User not found');
             }
         } catch (err) {
+            if (err.name === 'TokenExpiredError') {
+                return res.status(401).send('Token expired');
+            }
             res.status(403).send('Invalid token');
         }
     } else {
