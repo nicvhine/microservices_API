@@ -1,5 +1,10 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const {body, validationResult} = require('express-validator');
+const rateLimit = require('express-rate-limit');
+const https = require('https');
+const path = require('path');
+const fs = require('fs');
 const app = express();
 const PORT = 3002;
 
@@ -11,8 +16,55 @@ let users = [
     { id: 2, username: 'Brian', password: 'brian', role: 'admin', email: 'brian@gmail.com' }
 ];
 
+// rate limiters
+const limiter = rateLimit({
+    windowMs: 10 * 60 * 1000, 
+    max: 5, 
+    message: 'Too many requests from this IP, please try again after 10 minutes'
+  });
+
+const profileLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, 
+  max: 10, 
+  message: 'Too many profile requests, please try again later.'
+});
+
+const deleteUserLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, 
+    max: 5, 
+    message: 'Too many delete requests, please try again later.'
+  });
+
+  const updateUserLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, 
+    max: 10, 
+    message: 'Too many update requests, please try again later.'
+  });
+
+app.use('/', (req, res) => {
+    res.send('Customer Service');
+})
+
 // Register user
-app.post('/register', (req, res) => {
+app.post('/register', limiter, [
+    body('username')
+        .isAlphanumeric().withMessage('Username is Invalid'),
+    body('password')
+        .trim()
+        .isLength({ min: 8 }).withMessage('Password must be at least 8 characters long')
+        .matches(/\d/).withMessage('Password must contain at least one number')
+        .matches(/[!@#$%^&*(),.?":{}|<>]/).withMessage('Password must contain at least one special character'),
+    body('email')
+        .trim()
+        .isEmail().withMessage('Email must be a valid email')
+        .normalizeEmail().toLowerCase(),
+], (req, res) => {
+
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+    
     const { username, password, email, role } = req.body;
     const newUser = {
         id: users.length + 1,
@@ -26,7 +78,16 @@ app.post('/register', (req, res) => {
 });
 
 // Login user
-app.post('/login', (req, res) => {
+app.post('/login', limiter, [
+    body('username').isAlphanumeric().withMessage('Username is Invalid'),
+    body('password').trim().isLength({ min: 8 }).withMessage('Password mustbe at least 8 characters long'),
+], (req, res) => {
+
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+
     const { username, password } = req.body;
     const user = users.find(u => u.username === username && u.password === password);
 
@@ -39,7 +100,7 @@ app.post('/login', (req, res) => {
 });
 
 // Admin can fetch all users, excluding passwords; Customers can fetch own information
-app.get('/profile', (req, res) => {
+app.get('/profile', profileLimiter, (req, res) => {
     const authHeader = req.headers['authorization'];
 
     if (authHeader) {
@@ -68,7 +129,7 @@ app.get('/profile', (req, res) => {
 });
 
 // Admin can delete any users; Customers can delete own profile
-app.delete('/user/:id', (req, res) => {
+app.delete('/user/:id',deleteUserLimiter, (req, res) => {
     const authHeader = req.headers['authorization'];
 
     if (authHeader) {
@@ -101,7 +162,22 @@ app.delete('/user/:id', (req, res) => {
 });
 
 //Admin can edit any user; Customers can edit their own profile
-app.put('/user/:id', (req, res) => {
+app.put('/user/:id',updateUserLimiter, [
+    body('username')
+        .optional()
+        .isAlphanumeric().withMessage('Username is Invalid'),
+    body('password')
+        .optional()
+        .isLength({ min: 8 }).withMessage('Password must be at least 8 characters long')
+        .matches(/\d/).withMessage('Password must contain at least one number')
+        .matches(/[!@#$%^&*(),.?":{}|<>]/).withMessage('Password must contain at least one special character'),
+    body('email')
+        .optional()
+        .trim()
+        .isEmail().withMessage('Invalid email address')
+        .normalizeEmail()
+        .toLowerCase(),
+],(req, res) => {
     const authHeader = req.headers['authorization'];
 
     if (authHeader) {
@@ -154,6 +230,17 @@ app.put('/user/:id', (req, res) => {
     }
 });
 
-app.listen(PORT, () => {
-    console.log(`User Service running on port ${PORT}`);
+const sslServer = https.createServer({
+        key: fs.readFileSync(path.join(__dirname, 'cert', 'key.pem')),
+        cert: fs.readFileSync(path.join(__dirname, 'cert', 'cert.pem'))
+    }, 
+    app
+)
+
+sslServer.listen(PORT, ()=> {
+    console.log(`User Service on Secure Server running on port ${PORT}`);
 });
+
+// app.listen(PORT, () => {
+//     console.log(`User Service running on port ${PORT}`);
+// });

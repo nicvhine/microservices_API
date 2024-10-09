@@ -20,24 +20,52 @@ serviceEndpoints:
   orderService:
     url: 'http://localhost:3003'
 
-policies:
+policies: 
   - basic-auth
   - cors
   - log
   - proxy
+  - jwt
 
 pipelines:
   default:
     policies:
+      - jwt:
+          action:
+            secret: 'yourSecretKey'
+            algorithms: ['HS256']
+            credentialsRequired: true
+            requestProperty: 'user'  
+
+      - cors:
+          - action:
+              origins: ['*']
+              methods: ['GET', 'POST', 'PUT', 'DELETE']
+              headers: ['Authorization', 'Content-Type']
+              credentials: true
+
+      - log:
+          - action:
+              message: 'Request from ${req.connection.remoteAddress}'
+
       - proxy:
           - action:
               serviceEndpoint: customerService
               changeOrigin: true
+              condition:
+                name: 'path'
+                match: '/customers/*'
       - proxy:
           - action:
               serviceEndpoint: productService
               changeOrigin: true
+              condition:
+                name: 'path'
+                match: '/products/*'
       - proxy:
           - action:
               serviceEndpoint: orderService
               changeOrigin: true
+              condition:
+                name: 'path'
+                match: '/orders/*' 
