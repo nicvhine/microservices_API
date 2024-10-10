@@ -6,7 +6,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "customer": "nodemon CustomerService.js",
-    "product": "nodemon ProductService.js"
+    "product": "nodemon ProductService.js",
+    "order": "nodemon OrderService.js"
   },
   "keywords": [],
   "author": "",

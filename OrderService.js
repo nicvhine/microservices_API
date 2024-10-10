@@ -2,6 +2,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 // const {body, validationResult} = require('express-validator');
 const rateLimit = require('express-rate-limit');
+const { validationResult } = require('express-validator');
 const https = require('https');
 const path = require('path');
 const fs = require('fs');
@@ -31,13 +32,13 @@ const fetchOrdersLimiter = rateLimit({
 
 const editOrderLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, 
-    max: 5,
+    max: 10,
     message: 'Too many edit requests, please try again later.'
 });
 
 const deleteOrderLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, 
-    max: 5, 
+    max: 10, 
     message: 'Too many delete requests, please try again later.'
 });
 

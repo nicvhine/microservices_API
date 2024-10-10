@@ -13,7 +13,7 @@ app.use(express.json());
 const SECRET_KEY = 'yourSecretKey';
 let users = [
     { id: 1, username: 'John', password: 'John123*', role: 'customer', email: 'john@gmail.com' },
-    { id: 2, username: 'Brian', password: 'Brian123*', role: 'admin', email: 'brian@gmail.com' }
+    { id: 2, username: 'Admin', password: 'Admin1234*', role: 'admin', email: 'admin@gmail.com' }
 ];
 
 // rate limiters
