@@ -2,6 +2,9 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 // const {body, validationResult} = require('express-validator');
 const rateLimit = require('express-rate-limit');
+const https = require('https');
+const path = require('path');
+const fs = require('fs');
 const app = express();
 const PORT = 3003;
 
